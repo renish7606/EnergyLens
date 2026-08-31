@@ -1,3 +1,5 @@
+import importlib
+
 import pandas as pd
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -9,6 +11,20 @@ from ..services.analytics import load_readings_df
 from ..services.anomaly import detect_anomalies_iqr
 
 from ..services.billing import estimate_bill
+
+from pydantic import BaseModel
+
+from ..auth import get_current_admin
+
+
+def _forecast_with_backtest(*args, **kwargs):
+    try:
+        forecast_module = importlib.import_module("app.services.forcasting")
+    except ModuleNotFoundError:  # pragma: no cover - fallback for different package layouts
+        forecast_module = importlib.import_module("..services.forcasting", __package__)
+
+    return forecast_module.forecast_with_backtest(*args, **kwargs)
+
 
 router = APIRouter(
     prefix="/analytics",
@@ -245,4 +261,129 @@ def bill_estimate(
             2
         ),
         "estimated_bill": bill
+    }
+    
+@router.get("/forecast")
+def forecast(
+    room_id: int,
+    forecast_days: int = 7,
+    db: Session = Depends(get_db)
+):
+    df = load_readings_df(
+        db,
+        room_id
+    )
+
+    if df.empty:
+        return {
+            "forecast": {},
+            "backtest_mape_percent": None
+        }
+
+    daily = df.resample("D").sum()
+
+    daily_series = daily["kwh"]
+
+    try:
+        result = _forecast_with_backtest(
+            daily_series,
+            forecast_days=forecast_days
+        )
+    except ValueError as exc:
+        return {
+            "error": str(exc)
+        }
+
+    return result
+
+
+
+@router.get("/alert-check")
+def check_alert(
+    room_id: int,
+    db: Session = Depends(get_db)
+):
+    alert = (
+        db.query(models.Alert)
+        .filter(
+            models.Alert.room_id == room_id
+        )
+        .first()
+    )
+
+    df = load_readings_df(
+        db,
+        room_id
+    )
+
+    if df.empty:
+        return {
+            "current_total": 0,
+            "projected_month_total": 0,
+            "limit": (
+                alert.monthly_limit_kwh
+                if alert else None
+            ),
+            "will_exceed": False
+        }
+
+    days_elapsed = (
+        df.index.max() -
+        df.index.min()
+    ).days + 1
+
+    days_in_month = 30
+
+    total_kwh = df["kwh"].sum()
+
+    projected = (
+        total_kwh /
+        max(days_elapsed, 1)
+    ) * days_in_month
+
+    return {
+        "current_total": round(
+            total_kwh,
+            2
+        ),
+        "projected_month_total": round(
+            projected,
+            2
+        ),
+        "limit": (
+            alert.monthly_limit_kwh
+            if alert else None
+        ),
+        "will_exceed": bool(
+            alert and
+            projected >
+            alert.monthly_limit_kwh
+        )
+    }
+    
+    
+class AlertCreate(BaseModel):
+    room_id: int
+    monthly_limit_kwh: float
+    
+@router.post("/alerts")
+def create_alert(
+    alert_data: AlertCreate,
+    db: Session = Depends(get_db),
+    current_admin: str = Depends(get_current_admin)
+):
+    alert = models.Alert(
+        room_id=alert_data.room_id,
+        monthly_limit_kwh=alert_data.monthly_limit_kwh
+    )
+
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+
+    return {
+        "id": alert.id,
+        "room_id": alert.room_id,
+        "monthly_limit_kwh": alert.monthly_limit_kwh,
+        "created_by": current_admin
     }

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from .routers import rooms
 from .routers import readings
 from .routers import analytics
+from .routers import auth
 
 
 app = FastAPI(
@@ -22,6 +23,10 @@ app.include_router(
 
 app.include_router(
     analytics.router
+)
+
+app.include_router(
+    auth.router
 )
 
 
