@@ -77,3 +77,5 @@ build/
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+
+backend/household_power_consumption.csv

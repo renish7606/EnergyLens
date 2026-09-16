@@ -1,0 +1,2 @@
+import {useRooms} from '../api/hooks';
+export function RoomSelector({roomId,onChange}:{roomId?:number;onChange:(id:number)=>void}){const {data=[],isLoading}=useRooms();return <label className="text-sm text-muted">Meter <select aria-label="Select room" value={roomId??''} onChange={e=>onChange(+e.target.value)} className="ml-2 rounded border border-line bg-surface px-3 py-2 text-ink" disabled={isLoading||!data.length}>{!data.length?<option>No rooms configured</option>:data.map(r=><option key={r.id} value={r.id}>{r.building} / {r.room_number}</option>)}</select></label>}

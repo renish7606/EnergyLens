@@ -1,0 +1,3 @@
+import {useState} from 'react'; import {RoomSelector} from '../components/RoomSelector'; import {useRooms} from '../api/hooks';
+export function useSelectedRoom(){const {data=[]}=useRooms();const [chosen,setChosen]=useState<number|undefined>();const roomId=chosen??data[0]?.id;return {roomId,selector:<RoomSelector roomId={roomId} onChange={setChosen}/>}}
+export function PageHead({title,children}:{title:string;children?:React.ReactNode}){return <div className="mb-7 flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-semibold">{title}</h1><p className="mt-1 text-sm text-muted">Meter-level electricity analysis</p></div>{children}</div>}

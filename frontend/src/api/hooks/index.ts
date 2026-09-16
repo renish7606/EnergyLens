@@ -1,0 +1,11 @@
+import {useQuery} from '@tanstack/react-query'; import {api} from '../client'; import type {AlertCheck,Anomaly,Bill,Forecast,PeakPoint,Room,RoomComparison,SummaryPoint,TrendPoint} from '../types';
+const q=<T,>(key:unknown[],path:string,enabled=true)=>useQuery({queryKey:key,queryFn:()=>api<T>(path),enabled,retry:1});
+export const useRooms=()=>q<Room[]>(['rooms'],'/rooms/');
+export const useConsumptionSummary=(id?:number,period='D')=>q<SummaryPoint[]>(['summary',id,period],`/analytics/summary?room_id=${id}&period=${period}`,id!==undefined);
+export const useTrends=(id?:number)=>q<TrendPoint[]>(['trend',id],`/analytics/trend?room_id=${id}`,id!==undefined);
+export const useRoomComparison=()=>q<RoomComparison[]>(['compare'],'/analytics/compare');
+export const useAnomalies=(id?:number)=>q<Anomaly[]>(['anomalies',id],`/analytics/anomalies?room_id=${id}`,id!==undefined);
+export const usePeakUsage=(id?:number)=>q<PeakPoint[]>(['peak',id],`/analytics/peak?room_id=${id}`,id!==undefined);
+export const useBilling=(id?:number)=>q<Bill>(['bill',id],`/analytics/bill?room_id=${id}`,id!==undefined);
+export const useForecast=(id?:number)=>q<Forecast>(['forecast',id],`/analytics/forecast?room_id=${id}`,id!==undefined);
+export const useAlerts=(id?:number)=>q<AlertCheck>(['alerts',id],`/analytics/alert-check?room_id=${id}`,id!==undefined);
