@@ -1,0 +1,12 @@
+import {FormEvent,useState} from 'react';
+import {Navigate,useLocation,useNavigate} from 'react-router-dom';
+import {Zap} from 'lucide-react';
+import {api} from '../api/client';
+import {useAuth} from '../auth';
+
+export default function Login(){
+  const {isAuthenticated,login}=useAuth(); const navigate=useNavigate(); const location=useLocation(); const [username,setUsername]=useState(''); const [password,setPassword]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState('');
+  if(isAuthenticated)return <Navigate to={(location.state as {from?:string}|null)?.from??'/'} replace/>;
+  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');const body=new URLSearchParams({username,password});try{const result=await api<{access_token:string}>('/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});login(result.access_token);navigate('/',{replace:true});}catch(err){setError(err instanceof Error?err.message:'Unable to sign in.');}finally{setBusy(false)}}
+  return <main className="flex min-h-screen items-center justify-center bg-canvas px-5"><div className="w-full max-w-md border border-line bg-surface p-8"><div className="mb-8 flex items-center gap-3"><Zap className="text-primary" size={28}/><div><h1 className="text-xl font-semibold">EnergyLens</h1><p className="text-sm text-muted">Energy analytics console</p></div></div><h2 className="text-2xl font-semibold">Sign in</h2><p className="mt-2 text-sm text-muted">Use your EnergyLens admin account to continue.</p><form onSubmit={submit} className="mt-7 space-y-4"><label className="block text-sm text-muted">Username<input required autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} className="mt-2 w-full rounded border border-line bg-raised px-3 py-2.5 text-ink"/></label><label className="block text-sm text-muted">Password<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 w-full rounded border border-line bg-raised px-3 py-2.5 text-ink"/></label>{error&&<p role="alert" className="border border-alert/50 bg-alert/10 p-3 text-sm text-alert">{error}</p>}<button disabled={busy} className="w-full rounded bg-primary px-4 py-2.5 font-semibold text-canvas disabled:opacity-50">{busy?'Signing in…':'Sign in'}</button></form></div></main>
+}
